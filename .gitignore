@@ -132,7 +132,7 @@ dmypy.json
 #external source
 data/
 create_lmdb.py
-Difference in Room Annotation.pdf
+*.pdf
 Dockerfile
 eval.py
 floortrans/
