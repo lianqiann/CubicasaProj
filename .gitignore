@@ -130,4 +130,15 @@ dmypy.json
 
 
 #external source
-external/
+data/
+create_lmdb.py
+'Difference in Room Annotation.pdf'
+Dockerfile
+eval.py
+floortrans/
+requirements.text
+runs_cubi/
+samples.ipynb
+test.py
+train.py
+
