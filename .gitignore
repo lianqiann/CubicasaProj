@@ -132,11 +132,11 @@ dmypy.json
 #external source
 data/
 create_lmdb.py
-'Difference in Room Annotation.pdf'
+Difference in Room Annotation.pdf
 Dockerfile
 eval.py
 floortrans/
-requirements.text
+requirements.txt
 runs_cubi/
 samples.ipynb
 test.py
