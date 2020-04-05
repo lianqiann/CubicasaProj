@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 
-#external source
+# external source
 data/
 create_lmdb.py
 *.pdf
