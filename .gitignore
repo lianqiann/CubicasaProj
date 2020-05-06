@@ -130,15 +130,6 @@ dmypy.json
 
 
 # external source
-data/
-create_lmdb.py
-*.pdf
-Dockerfile
-eval.py
-floortrans/
-requirements.txt
-runs_cubi/
-samples.ipynb
-test.py
-train.py
+data/cubicasa5k/
+
 
