@@ -2,7 +2,6 @@ import os
 import numpy as np
 import torch
 from PIL import Image
-from floortrans.loaders import FloorplanSVG, DictToTensor, Compose, RotateNTurns
 
 from engine import train_one_epoch, evaluate
 import transforms as T
@@ -192,9 +191,9 @@ def main():
     # our dataset has two classes only - background and person
     num_classes = 1+10
     # use our dataset and defined transformations
-    dataset = CubicasaDataset('data/cubicasa5k', 'val',get_transform(train=True))
+    dataset = CubicasaDataset('data/cubicasa5k', 'train',get_transform(train=True))
 
-    dataset_test = CubicasaDataset('data/cubicasa5k', 'test',get_transform(train=False))
+    dataset_test = CubicasaDataset('data/cubicasa5k', 'val',get_transform(train=False))
 
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
@@ -236,7 +235,11 @@ def main():
         # evaluate on the test dataset
         evaluate(model, data_loader_test, device=device)
 
+        torch.save(model, f'checkpoints/maskrcnn_{epoch}.pt')
+
     print("That's it!")
+
+
 
 
 main()
