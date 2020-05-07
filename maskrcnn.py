@@ -118,7 +118,7 @@ class CubicasaDataset(object):
         target["labels"] = labels
         target["masks"] = torch.as_tensor(mask_tensor, dtype=torch.uint8)
         target["image_id"] = torch.tensor([idx], dtype = torch.int8)
-        target["folder"] = torch.tensor([self.imgs[idx]])
+        #target["folder"] = torch.tensor([self.imgs[idx]])
         target["area"] = areas
         target["iscrowd"] = torch.zeros(num_obj, dtype = torch.int8)
 
