@@ -33,10 +33,12 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         
         try:
             loss_dict = model(images, targets)
+            print(loss_dict.keys())
         except:
             print('Training encounters problems!')
-            print('the problem image_id =', targets['image_id'])
+            print('the problem image_id =', targets)
             torch.save(model.state_dict(), f'checkpoints/maskrcnn_last.pt')
+            loss_dict = {}
 
         losses = sum(loss for loss in loss_dict.values())
 
