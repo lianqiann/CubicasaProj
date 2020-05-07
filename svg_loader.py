@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 import cv2
 import numpy as np
 from numpy import genfromtxt
-from floortrans.loaders.house import House
+from house import House
 
 
 class FloorplanSVG(Dataset):

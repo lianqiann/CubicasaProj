@@ -86,6 +86,8 @@ class CubicasaDataset(object):
         
         if num_obj >20:
             rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
+        elif num_obj ==0:
+            print('No objects in image_id = ', idx)
         else:
             rand_inds = np.arange(num_obj)
         
@@ -241,7 +243,6 @@ def main():
                 evaluate(model, data_loader_val, device=device)
             except:
                 print('evaluation encouters problem!')
-
 
             torch.save(model.state_dict(), f'checkpoints/{args.model_name}_{epoch}.pt')
 

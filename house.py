@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from floortrans.loaders.svg_utils import PolygonWall, get_polygon, calc_distance, get_room_number, get_icon, get_icon_number, get_points, get_direction, get_gaussian2D
+from svg_utils import PolygonWall, get_polygon, calc_distance, get_room_number, get_icon, get_icon_number, get_points, get_direction, get_gaussian2D
 from xml.dom import minidom
 from skimage.draw import polygon
 import cv2
@@ -949,12 +949,6 @@ class House:
         res = 0
         for i, w in enumerate(self.wall_objs):
             res += w.max_width
-        
-        if i!=0:
-            res = res / float(i)
-        else:
-            res = 0
-
         return res
 
     def connect_walls(self, walls):
