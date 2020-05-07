@@ -259,10 +259,11 @@ def main():
         # evaluate on the test dataset
         if args.val !='None':
             evaluate(model, data_loader_val, device=device)
+            torch.save(model, f'checkpoints/maskrcnn_{epoch}.pt')
         else:
             print('*'*25+f'epoch {epoch} finished'+'*'*25)
 
-        torch.save(model, f'checkpoints/maskrcnn_{epoch}.pt')
+        
 
     print("get test results")
     evaluate(model, data_loader_test, device=device)
