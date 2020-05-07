@@ -88,7 +88,7 @@ class CubicasaDataset(object):
             rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
         elif num_obj ==0:
             rand_inds = []
-            print('No objects in image_id = ', idx)
+            print('No objects in this image, folder:', self.imgs[idx])
         else:
             rand_inds = np.arange(num_obj)
         
@@ -118,6 +118,7 @@ class CubicasaDataset(object):
         target["labels"] = labels
         target["masks"] = torch.as_tensor(mask_tensor, dtype=torch.uint8)
         target["image_id"] = torch.tensor([idx], dtype = torch.int8)
+        target["folder"] = torch.tensor([self.imgs[idx]])
         target["area"] = areas
         target["iscrowd"] = torch.zeros(num_obj, dtype = torch.int8)
 

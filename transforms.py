@@ -35,7 +35,7 @@ class RandomHorizontalFlip(object):
             bbox = target["boxes"]
 
             if len(bbox) ==0:
-                print('No objects in image_id =', target['image_id'])
+                print('No objects in folder', target['folder'])
             else:
                 bbox[:, [0, 2]] = width - bbox[:, [2, 0]]
             target["boxes"] = bbox
