@@ -999,7 +999,6 @@
 /high_quality_architectural/4752/
 /high_quality_architectural/2516/
 /high_quality_architectural/7758/
-/high_quality_architectural/4520/
 /high_quality_architectural/6376/
 /high_quality_architectural/9034/
 /high_quality_architectural/3085/
