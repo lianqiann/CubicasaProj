@@ -16,6 +16,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from floortrans.loaders.house import House
 import copy
+import argparse
 
 
 import cv2
@@ -132,9 +133,6 @@ class CubicasaDataset(object):
 
 
         #######################################
-
-        #img = np.moveaxis(fplan, -1, 0)
-
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
@@ -152,9 +150,10 @@ class CubicasaDataset(object):
         return len(self.imgs)
 
 
-
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
+
+    
     model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     # get number of input features for the classifier
@@ -185,29 +184,54 @@ def get_transform(train):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description='Variational Sequential Labelers \
+        for Semi-supervised learning')
+
+    parser.add_argument('--epochs', type=int, default=4,
+                        help="the number of training epcohs, default: 4")
+    parser.add_argument('--train', type=str, default='train',
+                        help="the name of training set, default: train")
+    parser.add_argument('--val', type=str, default='val',
+                        help="the name of training set, default: val")
+    parser.add_argument('--test', type=str, default='test',
+                        help="the name of test set, default: test")
+    
+    args = parser.parse_args()
+
+
+
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     # our dataset has two classes only - background and person
     num_classes = 1+10
     # use our dataset and defined transformations
-    dataset = CubicasaDataset('data/cubicasa5k', 'train',get_transform(train=True))
+    dataset = CubicasaDataset('data/cubicasa5k', args.train,get_transform(train=True))
 
-    dataset_test = CubicasaDataset('data/cubicasa5k', 'val',get_transform(train=False))
+    
+    dataset_test = CubicasaDataset('data/cubicasa5k', args.test,get_transform(train=False))
 
     # split the dataset in train and test set
-    indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    # indices = torch.randperm(len(dataset)).tolist()
+    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=2, shuffle=True, 
         collate_fn=utils.collate_fn)
-
+    
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, 
         collate_fn=utils.collate_fn)
+    
+    if args.val!='None':
+        dataset_val = CubicasaDataset('data/cubicasa5k', args.val,get_transform(train=False))
+
+        data_loader_val = torch.utils.data.DataLoader(
+            dataset_val, batch_size=1, shuffle=False, 
+            collate_fn=utils.collate_fn)
 
     # get the model using our helper function
     model = get_model_instance_segmentation(num_classes)
@@ -225,7 +249,7 @@ def main():
                                                    gamma=0.1)
 
     # let's train it for 10 epochs
-    num_epochs = 10
+    num_epochs = args.epochs
 
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
@@ -233,9 +257,16 @@ def main():
         # update the learning rate
         lr_scheduler.step()
         # evaluate on the test dataset
-        evaluate(model, data_loader_test, device=device)
+        if args.val !='None':
+            evaluate(model, data_loader_val, device=device)
+        else:
+            print('*'*25+f'epoch {epoch} finished'+'*'*25)
 
         torch.save(model, f'checkpoints/maskrcnn_{epoch}.pt')
+
+    print("get test results")
+    evaluate(model, data_loader_test, device=device)
+
 
     print("That's it!")
 

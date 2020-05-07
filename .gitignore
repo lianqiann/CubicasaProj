@@ -130,6 +130,9 @@ dmypy.json
 
 
 # external source
-data/cubicasa5k/
+data/cubicasa5k/colorful
+data/cubicasa5k/high_quality
+data/cubicasa5k/high_quality_architectural
+data/cubicasa5k/colorful
 
 
