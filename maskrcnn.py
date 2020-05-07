@@ -237,10 +237,15 @@ def main():
         lr_scheduler.step()
         # evaluate on the test dataset
         if args.val !='None':
-            evaluate(model, data_loader_val, device=device)
+            try:
+                evaluate(model, data_loader_val, device=device)
+            except:
+                print('evaluation encouters problem!')
+
+
             torch.save(model.state_dict(), f'checkpoints/{args.model_name}_{epoch}.pt')
-        else:
-            print('*'*25+f'epoch {epoch} finished'+'*'*25)
+
+        print('*'*25+f'epoch {epoch} finished'+'*'*25)
 
         
 
