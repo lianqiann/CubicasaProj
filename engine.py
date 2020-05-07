@@ -26,7 +26,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
     for images, targets in metric_logger.log_every(data_loader, print_freq, device, header):
 
         torch.cuda.empty_cache()
-        
+
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -54,6 +54,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         optimizer.zero_grad()
         losses.backward()
         optimizer.step()
+
+        loss_dict.cpu()
 
         
 
