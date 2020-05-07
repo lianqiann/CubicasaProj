@@ -33,13 +33,14 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         
         try:
             loss_dict = model(images, targets)
-            print(loss_dict.keys())
+            
+            
         except:
             print('Training encounters problems!')
             print('the problem image_id =', targets)
             torch.save(model.state_dict(), f'checkpoints/maskrcnn_last.pt')
-            loss_dict = {}
-
+            return 
+            
         losses = sum(loss for loss in loss_dict.values())
 
         # reduce losses over all GPUs for logging purposes
@@ -47,6 +48,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
         loss_value = losses_reduced.item()
+        
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))

@@ -227,7 +227,7 @@ def main():
     model = get_model_instance_segmentation(num_classes)
 
     if args.use_pretrain:
-        model.load_state_dict(torch.load('./models/'+args.pretrain_path))
+        model.load_state_dict(torch.load(args.pretrain_path))
 
     # move model to the right device
     model.to(device)
