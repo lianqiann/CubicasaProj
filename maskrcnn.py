@@ -20,38 +20,6 @@ import argparse
 
 
 import cv2
-# class CubicasaDataset(object):
-#     def __init__(self, root, mode, transforms=None):
-#         self.root = root
-#         self.dict = torch.load(f"data/cubicasa5k/instance_info_{mode}.pt")
-#         self.transforms = transforms
-#         self.imgs = np.genfromtxt(root + '/'+mode+'.txt', dtype='str')
-    
-        
-#     def __getitem__(self, idx):
-#         # load images ad masks
-        
-#         instance_info = self.dict[self.imgs[idx]]
-        
-#         fplan = cv2.imread(self.root + self.imgs[idx]+'F1_original.png')
-#         img = cv2.cvtColor(fplan, cv2.COLOR_BGR2RGB)  # correct color channels
-#         #img = np.moveaxis(fplan, -1, 0)
-
-#         target = {}
-#         target["boxes"] = instance_info['boxes']
-#         target["labels"] = instance_info['labels'].long()
-#         target["masks"] = torch.as_tensor(instance_info['masks'], dtype=torch.uint8)
-#         target["image_id"] = torch.tensor([idx], dtype = torch.int8)
-#         target["area"] = instance_info['area']
-#         target["iscrowd"] = instance_info['iscrowd']
-
-#         if self.transforms is not None:
-#             img, target = self.transforms(img, target)
-
-#         return img, target
-
-#     def __len__(self):
-#         return len(self.imgs)
 
 room_classes = ["Background", "Outdoor", "Wall", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
 rooms = ["Outdoor", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
@@ -105,22 +73,31 @@ class CubicasaDataset(object):
         
         mask_tensor = []
         areas = []
-        
+
+        limit_list = []
+
         for r in room_ids:
             x = copy.copy(masks)
             x[masks != r] = 0 
             x = x.astype(np.uint8)
             contours, _ = cv2.findContours(x,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-            
-            for tcnt in contours: 
-                im = np.zeros((height,width,3), np.uint8)
-                im = cv2.drawContours(im, [tcnt], -1, (255,255,255), -1)
-                mask_tensor.append((im[:,:,0]/255).astype(np.int8))
-                areas.append(cv2.contourArea(tcnt,False))
-                x,y,w,h = cv2.boundingRect(tcnt)
-                boxes.append([x,y,x+w,y+h])
-                labels.append(room_labels[room_classes[r]])
-                num_obj+=1
+            limit_list +=[(r, cot) for cot in contours]
+            num_obj+=len(contours)
+        
+        if num_obj >20:
+            rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
+        else:
+            rand_inds = np.arange(num_obj)
+        
+        for ind in rand_inds:
+            r, tcnt = limit_list[ind]
+            im = np.zeros((height,width,3), np.uint8)
+            im = cv2.drawContours(im, [tcnt], -1, (255,255,255), -1)
+            mask_tensor.append((im[:,:,0]/255).astype(np.int8))
+            areas.append(cv2.contourArea(tcnt,False))
+            x,y,w,h = cv2.boundingRect(tcnt)
+            boxes.append([x,y,x+w,y+h])
+            labels.append(room_labels[room_classes[r]])
         
         boxes = torch.FloatTensor(boxes)
         labels = torch.as_tensor(labels, dtype = torch.long)
@@ -198,7 +175,9 @@ def main():
                         help="the name of test set, default: test")
     parser.add_argument('--batch_size', type=int, default=2,
                         help="batch size, default: 32")
-    
+    parser.add_argument('--model_name', type=str, default='maskrcnn',
+                        help="model, default: maskrcnn")
+
     args = parser.parse_args()
 
 
@@ -219,7 +198,7 @@ def main():
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, 
+        dataset, batch_size=args.batch_size, shuffle=False, 
         collate_fn=utils.collate_fn)
     
     data_loader_test = torch.utils.data.DataLoader(
@@ -259,7 +238,7 @@ def main():
         # evaluate on the test dataset
         if args.val !='None':
             evaluate(model, data_loader_val, device=device)
-            torch.save(model.state_dict(), f'checkpoints/maskrcnn_{epoch}.pt')
+            torch.save(model.state_dict(), f'checkpoints/{args.model_name}_{epoch}.pt')
         else:
             print('*'*25+f'epoch {epoch} finished'+'*'*25)
 

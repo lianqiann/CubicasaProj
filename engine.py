@@ -30,14 +30,13 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-
-        loss_dict = model(images, targets)
-
-        for im, t in zip(images, targets):
-            im.detach().cpu()
-            for k in t:
-                t[k].detach().cpu()
         
+        try:
+            loss_dict = model(images, targets)
+        except:
+            print('Training encounters problems!')
+            print(targets)
+            torch.save(model.state_dict(), f'checkpoints/maskrcnn_last.pt')
 
         losses = sum(loss for loss in loss_dict.values())
 
@@ -56,13 +55,6 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses.backward()
         optimizer.step()
 
-        for v in loss_dict.values():
-            v.data.cpu()
-
-
-        
-
-        
 
         if lr_scheduler is not None:
             lr_scheduler.step()
