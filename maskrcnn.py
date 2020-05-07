@@ -179,6 +179,12 @@ def main():
                         help="batch size, default: 32")
     parser.add_argument('--model_name', type=str, default='maskrcnn',
                         help="model, default: maskrcnn")
+    parser.add_argument('--subset', type=int, default=None,
+                        help="the index where the subset start from, default: None")
+    parser.add_argument('--use_pretrain', type=bool, default=False,
+                        help="whether use pretrained model, default: False")
+    parser.add_argument('--pretrain_path', type=str, default=None,
+                        help="the name of pretrained model")
 
     args = parser.parse_args()
 
@@ -195,8 +201,9 @@ def main():
 
     # split the dataset in train and test set
     # indices = torch.randperm(len(dataset)).tolist()
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    if args.subset:
+        dataset = torch.utils.data.Subset(dataset, indices[args.subset:])
+    #dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
@@ -216,6 +223,9 @@ def main():
 
     # get the model using our helper function
     model = get_model_instance_segmentation(num_classes)
+
+    if args.use_pretrain:
+        model.load_state_dict(torch.load('./models/'+args.pretrain_path))
 
     # move model to the right device
     model.to(device)
