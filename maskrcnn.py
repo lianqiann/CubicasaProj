@@ -87,6 +87,7 @@ class CubicasaDataset(object):
         if num_obj >20:
             rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
         elif num_obj ==0:
+            rand_inds = []
             print('No objects in image_id = ', idx)
         else:
             rand_inds = np.arange(num_obj)
