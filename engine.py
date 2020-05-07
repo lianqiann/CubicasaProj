@@ -29,9 +29,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
         loss_dict = model(images, targets)
 
-        
-        images = list(image.to('cpu') for image in images)
-        targets = [{k: v.to('cpu') for k, v in t.items()} for t in targets]
+        for im, t in zip(images, targets):
+            img.detach().cpu()
+            for k in t:
+                t[k].detach().cpu()
         
 
         losses = sum(loss for loss in loss_dict.values())
@@ -84,7 +85,6 @@ def evaluate(model, data_loader, device):
 
     coco = get_coco_api_from_dataset(data_loader.dataset)
     iou_types = _get_iou_types(model)
-    print(type(iou_types[0]))
     coco_evaluator = CocoEvaluator(coco, iou_types)
 
     for image, targets in metric_logger.log_every(data_loader, 100, header):

@@ -196,6 +196,8 @@ def main():
                         help="the name of training set, default: val")
     parser.add_argument('--test', type=str, default='test',
                         help="the name of test set, default: test")
+    parser.add_argument('--batch_size', type=int, default=2,
+                        help="batch size, default: 32")
     
     args = parser.parse_args()
 
@@ -208,8 +210,6 @@ def main():
     num_classes = 1+10
     # use our dataset and defined transformations
     dataset = CubicasaDataset('data/cubicasa5k', args.train,get_transform(train=True))
-
-    
     dataset_test = CubicasaDataset('data/cubicasa5k', args.test,get_transform(train=False))
 
     # split the dataset in train and test set
@@ -219,18 +219,18 @@ def main():
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, shuffle=True, 
+        dataset, batch_size=args.batch_size, shuffle=True, 
         collate_fn=utils.collate_fn)
     
     data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, 
+        dataset_test, batch_size=args.batch_size, shuffle=False, 
         collate_fn=utils.collate_fn)
     
     if args.val!='None':
         dataset_val = CubicasaDataset('data/cubicasa5k', args.val,get_transform(train=False))
 
         data_loader_val = torch.utils.data.DataLoader(
-            dataset_val, batch_size=1, shuffle=False, 
+            dataset_val, batch_size=args.batch_size, shuffle=False, 
             collate_fn=utils.collate_fn)
 
     # get the model using our helper function
@@ -259,14 +259,14 @@ def main():
         # evaluate on the test dataset
         if args.val !='None':
             evaluate(model, data_loader_val, device=device)
-            torch.save(model, f'checkpoints/maskrcnn_{epoch}.pt')
+            torch.save(model.state_dict(), f'checkpoints/maskrcnn_{epoch}.pt')
         else:
             print('*'*25+f'epoch {epoch} finished'+'*'*25)
 
         
 
-    print("get test results")
-    evaluate(model, data_loader_test, device=device)
+    #print("get test results")
+    #evaluate(model, data_loader_test, device=device)
 
 
     print("That's it!")

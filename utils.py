@@ -198,6 +198,7 @@ class MetricLogger(object):
             'max mem: {memory:.0f}'
         ])
         MB = 1024.0 * 1024.0
+        print(device)
         for obj in iterable:
             data_time.update(time.time() - end)
             yield obj
@@ -206,7 +207,7 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 
-                if device == torch.device('cpu'):
+                if device != torch.device('cuda'):
                     print(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
