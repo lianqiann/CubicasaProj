@@ -201,7 +201,7 @@ def main():
     dataset_test = CubicasaDataset('data/cubicasa5k', args.test,get_transform(train=False))
 
     # split the dataset in train and test set
-    # indices = torch.randperm(len(dataset)).tolist()
+    indices = torch.arange(len(dataset)).tolist()
     if args.subset:
         dataset = torch.utils.data.Subset(dataset, indices[args.subset:])
     #dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
