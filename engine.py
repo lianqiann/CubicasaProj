@@ -28,6 +28,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         loss_dict = model(images, targets)
+
+        
+        images = list(image.to('cpu') for image in images)
+        targets = [{k: v.to('cpu') for k, v in t.items()} for t in targets]
         
 
         losses = sum(loss for loss in loss_dict.values())
@@ -47,7 +51,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses.backward()
         optimizer.step()
 
-        losses.detach()
+        
 
         if lr_scheduler is not None:
             lr_scheduler.step()
