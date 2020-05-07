@@ -56,7 +56,11 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses.backward()
         optimizer.step()
 
-        loss_dict.data.cpu()
+        for v in loss_dict.values():
+            v.data.cpu()
+
+
+        
 
         
 
