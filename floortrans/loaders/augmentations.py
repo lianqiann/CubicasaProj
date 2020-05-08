@@ -164,7 +164,7 @@ class DictToTensor(object):
         heatmap_tensor = torch.FloatTensor(heatmap_tensor)
 
         label = torch.cat((heatmap_tensor, label), 0)
-
+#         print("printing LABEL AT DICTTOTENSOR", label)
         return {'image': image, 'label': label}
 
     def furukawa(self, sample):
@@ -634,8 +634,14 @@ class ResizePaddedTorch(object):
         img_s = torch.tensor(img.shape[1:], dtype=self.dtype)
         interm_shape = (ratio * img_s).ceil()
 
-        interm_shape = [interm_shape[0], interm_shape[1]]
-
+        interm_shape = [int(interm_shape[0].item()), int(interm_shape[1].item())]
+        
+#         print("printing interm_shape", interm_shape)
+#         print("type of interm_shape[0]", type(interm_shape[0]))
+        
+#         print("printing img", img)
+#         print("printing type of img", type(img))
+        
         img = img.unsqueeze(0)
         interm_img = torch.nn.functional.interpolate(img, size=interm_shape, mode=mode, align_corners=aling_corners)
         interm_img = interm_img.squeeze(0)
