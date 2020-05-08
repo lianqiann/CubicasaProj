@@ -24,7 +24,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
 
     for images, targets in metric_logger.log_every(data_loader, print_freq, device, header):
-        
+        wrong_counts = 0
         if device ==torch.device('cuda'):
             torch.cuda.empty_cache()
 
@@ -36,8 +36,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
             
             
         except:
+            wrong_counts +=1
             print('Training encounters problems!')
-            print('the problem image_id =', [t['image_id'] for t in targets])
+            f = open(f'checkpoints/records_{wrong_counts}.txt','w')
+            f.write(f'the problem image_id ={[t['image_id'] for t in targets]})
             torch.save(model.state_dict(), f'checkpoints/maskrcnn_last_resized.pt')
             continue
             
