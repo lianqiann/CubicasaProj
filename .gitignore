@@ -135,5 +135,7 @@ data/cubicasa5k/high_quality
 data/cubicasa5k/high_quality_architectural
 data/cubicasa5k/colorful
 checkpoints/
+models/
+floortrans/
 
 
