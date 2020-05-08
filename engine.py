@@ -39,7 +39,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
             wrong_counts +=1
             print('Training encounters problems!')
             f = open(f'checkpoints/records_{wrong_counts}.txt','w')
-            f.write(f'the problem image_id ={[t['image_id'] for t in targets]})
+            ids = [t['image_id'] for t in targets]
+            f.write(f'the problem image_id ={ids}')
             torch.save(model.state_dict(), f'checkpoints/maskrcnn_last_resized.pt')
             continue
             
