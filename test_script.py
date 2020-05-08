@@ -2,21 +2,20 @@ import os
 import numpy as np
 import torch
 from PIL import Image
+import cv2
 
-from engine import train_one_epoch, evaluate
-import transforms as T
-import utils
-
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection import FasterRCNN
-from torchvision.models.detection.rpn import AnchorGenerator
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from house import House
 import copy
+import torchvision
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+import transforms as T
+from engine import train_one_epoch, evaluate
+import utils
+import matplotlib.pyplot as plt
 import argparse
-import cv2
+from floortrans.loaders import FloorplanSVG, DictToTensor, Compose, RotateNTurns
+
 
 room_classes = ["Background", "Outdoor", "Wall", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
 rooms = ["Outdoor", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
@@ -44,7 +43,7 @@ class CubicasaDataset(object):
         img_path = self.root + self.imgs[idx]+'F1_scaled.png'
         svg_path = self.root + self.imgs[idx]+'model.svg'
 
-        
+        img = Image.open(org_img_path).convert("RGB")
 
         height, width, _ = cv2.imread(img_path).shape
         height_org, width_org, _ = cv2.imread(org_img_path).shape
@@ -62,8 +61,8 @@ class CubicasaDataset(object):
 
 
         #############process items##############
-        masks = cv2.resize(label.data.numpy(), (256,256))
-    
+        masks = label.data.numpy()
+      
         boxes = []
         labels = []
         num_obj = 0
@@ -81,9 +80,9 @@ class CubicasaDataset(object):
             limit_list +=[(r, cot) for cot in contours]
             num_obj+=len(contours)
         
-#         if num_obj >20:
-#             rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
-        if num_obj ==0:
+        if num_obj >20:
+            rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
+        elif num_obj == 0:
             rand_inds = []
             print('No objects in this image, folder:', self.imgs[idx])
         else:
@@ -91,7 +90,7 @@ class CubicasaDataset(object):
         
         for ind in rand_inds:
             r, tcnt = limit_list[ind]
-            im = np.zeros((256,256,3), np.uint8)
+            im = np.zeros((height,width,3), np.uint8)
             im = cv2.drawContours(im, [tcnt], -1, (255,255,255), -1)
             mask_tensor.append((im[:,:,0]/255).astype(np.int8))
             areas.append(cv2.contourArea(tcnt,False))
@@ -102,6 +101,7 @@ class CubicasaDataset(object):
         boxes = torch.FloatTensor(boxes)
         labels = torch.as_tensor(labels, dtype = torch.long)
         areas = torch.FloatTensor(areas)
+        
         
         try:
             mask_tensor = np.stack(mask_tensor, 0)
@@ -115,12 +115,9 @@ class CubicasaDataset(object):
         target["labels"] = labels
         target["masks"] = torch.as_tensor(mask_tensor, dtype=torch.uint8)
         target["image_id"] = torch.tensor([idx], dtype = torch.int8)
-        #target["folder"] = torch.tensor([self.imgs[idx]])
         target["area"] = areas
         target["iscrowd"] = torch.zeros(num_obj, dtype = torch.int8)
-        
-        img = Image.open(org_img_path).convert("RGB")
-        
+
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
@@ -130,10 +127,10 @@ class CubicasaDataset(object):
         return len(self.imgs)
 
 
+
+
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
-
-    
     model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     # get number of input features for the classifier
@@ -151,126 +148,71 @@ def get_model_instance_segmentation(num_classes):
 
     return model
 
-
-
 def get_transform(train):
     transforms = []
-    transforms.append(T.Resize((256,256)))
     transforms.append(T.ToTensor())
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
-    
     return T.Compose(transforms)
 
 
+
+def prepare_model(dataset_name, device):
+
+
+    # our dataset has two classes only - background and person
+    num_classes = 1+10
+    # use our dataset and defined transformations
+    dataset = CubicasaDataset('data/cubicasa5k', dataset_name,get_transform(train=False))
+
+    
+
+    # define training and validation data loaders
+    data_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=1, shuffle=False, 
+            collate_fn=utils.collate_fn)
+
+    
+    # get the model using our helper function
+    model = get_model_instance_segmentation(num_classes)
+
+    # move model to the right device
+    model.to(device)
+
+    
+
+    return model, data_loader
 
 
 def main():
     parser = argparse.ArgumentParser(
         description='MaskRCNN for Cubicasa Dataset')
+    
 
-    parser.add_argument('--epochs', type=int, default=4,
-                        help="the number of training epcohs, default: 4")
-    parser.add_argument('--train', type=str, default='train',
-                        help="the name of training set, default: train")
-    parser.add_argument('--val', type=str, default='val',
-                        help="the name of training set, default: val")
-    parser.add_argument('--test', type=str, default='test',
-                        help="the name of test set, default: test")
-    parser.add_argument('--batch_size', type=int, default=2,
-                        help="batch size, default: 32")
-    parser.add_argument('--model_name', type=str, default='maskrcnn',
-                        help="model, default: maskrcnn")
-    parser.add_argument('--subset', type=int, default=None,
-                        help="the index where the subset start from, default: None")
-    parser.add_argument('--use_pretrain', type=bool, default=False,
-                        help="whether use pretrained model, default: False")
-    parser.add_argument('--pretrain_path', type=str, default=None,
-                        help="the name of pretrained model")
-
+    parser.add_argument('--epoch', type=int, default=None,
+                        help="which epoch result model to run, default: None")
+    parser.add_argument('--data_name', type=str, default='val',
+                        help="which dataset to test, default: val")
+    parser.add_argument('--run_all', type=bool, default=False,
+                        help="whether to run all models")
     args = parser.parse_args()
 
-
-
-    # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model, data_loader = prepare_model(args.data_name, device)
 
-    # our dataset has two classes only - background and person
-    num_classes = 1+10
-    # use our dataset and defined transformations
-    dataset = CubicasaDataset('data/cubicasa5k', args.train,get_transform(train=True))
-    dataset_test = CubicasaDataset('data/cubicasa5k', args.test,get_transform(train=False))
-
-    # split the dataset in train and test set
-    indices = torch.arange(len(dataset)).tolist()
-    if args.subset:
-        dataset = torch.utils.data.Subset(dataset, indices[args.subset:])
-    #dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
-
-    # define training and validation data loaders
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=False, 
-        collate_fn=utils.collate_fn)
+    if args.epoch:
+        model.load_state_dict(torch.load(f'models/maskrcnn_{args.epoch}.pt',map_location='cpu'))
+        evaluate(model, data_loader, device=device)
     
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=args.batch_size, shuffle=False, 
-        collate_fn=utils.collate_fn)
-    
-    if args.val!='None':
-        dataset_val = CubicasaDataset('data/cubicasa5k', args.val,get_transform(train=False))
-
-        data_loader_val = torch.utils.data.DataLoader(
-            dataset_val, batch_size=args.batch_size, shuffle=False, 
-            collate_fn=utils.collate_fn)
-
-    # get the model using our helper function
-    model = get_model_instance_segmentation(num_classes)
-
-    if args.use_pretrain:
-        model.load_state_dict(torch.load(args.pretrain_path))
-
-    # move model to the right device
-    model.to(device)
-
-    # construct an optimizer
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=0.005,
-                                momentum=0.9, weight_decay=0.0005)
-    #optimizer = torch.optim.Adam(params)
-
-    # and a learning rate scheduler
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                   step_size=3,
-                                                   gamma=0.1)
-
-    # let's train it for 10 epochs
-    num_epochs = args.epochs
-
-    for epoch in range(num_epochs):
-        # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-        # update the learning rate
-        lr_scheduler.step()
-        # evaluate on the test dataset
-        if args.val !='None':
-            try:
-                evaluate(model, data_loader_val, device=device)
-            except:
-                print('evaluation encouters problem!')
-
-            torch.save(model.state_dict(), f'checkpoints/{args.model_name}_{epoch}_resized.pt')
-
-        print('*'*25+f'epoch {epoch} finished'+'*'*25)
-
-        
-
-    #print("get test results")
-    #evaluate(model, data_loader_test, device=device)
-
-
-    print("That's it!")
-
+    if args.run_all:
+        for epoch in range(4):
+            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}.pt',map_location='cpu'))
+            evaluate(model, data_loader, device=device)
 
 
 
 main()
+
+
+    
+

@@ -159,7 +159,10 @@ def convert_to_coco_api(ds):
         img_dict['width'] = img.shape[-1]
         dataset['images'].append(img_dict)
         bboxes = targets["boxes"]
-        bboxes[:, 2:] -= bboxes[:, :2]
+        try:
+            bboxes[:, 2:] -= bboxes[:, :2]
+        except:
+            print('empty image, image_id = ', targets['image_id'] )
         bboxes = bboxes.tolist()
         labels = targets['labels'].tolist()
         areas = targets['area'].tolist()

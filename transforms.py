@@ -2,6 +2,8 @@ import random
 import torch
 
 from torchvision.transforms import functional as F
+import torchvision
+from PIL import Image
 
 
 def _flip_coco_person_keypoints(kps, width):
@@ -45,6 +47,24 @@ class RandomHorizontalFlip(object):
                 keypoints = target["keypoints"]
                 keypoints = _flip_coco_person_keypoints(keypoints, width)
                 target["keypoints"] = keypoints
+
+            
+
+
+        return image, target
+
+class Resize(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        #assert isinstance(size, int) or (isinstance(size, Iterable) and len(size) == 2)
+        self.size = size
+        self.interpolation = interpolation
+
+
+    def __call__(self, image, target):
+        
+        image = F.resize(image, self.size, self.interpolation)
+
+            
         return image, target
 
 

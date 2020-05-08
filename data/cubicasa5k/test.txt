@@ -45,7 +45,6 @@
 /high_quality_architectural/3038/
 /high_quality_architectural/1285/
 /high_quality_architectural/1284/
-/high_quality_architectural/6269/
 /high_quality_architectural/7647/
 /high_quality_architectural/4068/
 /high_quality_architectural/435/
@@ -216,7 +215,6 @@
 /high_quality_architectural/2037/
 /high_quality_architectural/5886/
 /high_quality_architectural/9531/
-/high_quality_architectural/7705/
 /high_quality_architectural/7901/
 /high_quality_architectural/1841/
 /high_quality_architectural/9443/
