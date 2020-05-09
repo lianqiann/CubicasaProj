@@ -3,9 +3,9 @@ import numpy as np
 import torch
 from PIL import Image
 
-from engine import train_one_epoch, evaluate
-import transforms as T
-import utils
+from model_utils.engine import train_one_epoch, evaluate
+import model_utils.transforms as T
+import model_utils.utils as utils
 
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
@@ -13,7 +13,7 @@ from torchvision.models.detection import FasterRCNN
 from torchvision.models.detection.rpn import AnchorGenerator
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-from house import House
+from floortrans.loaders.house import House
 import copy
 import argparse
 import cv2
@@ -227,7 +227,7 @@ def main():
     model = get_model_instance_segmentation(num_classes)
 
     if args.use_pretrain:
-        model.load_state_dict(torch.load(args.pretrain_path))
+        model.load_state_dict(torch.load(args.pretrain_path, map_location='cuda' if torch.cuda.is_available() else 'cpu'))
 
     # move model to the right device
     model.to(device)
