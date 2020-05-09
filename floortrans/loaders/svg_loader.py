@@ -100,3 +100,7 @@ class FloorplanSVG(Dataset):
         sample['image'] = fplan
 
         return sample
+
+
+
+    

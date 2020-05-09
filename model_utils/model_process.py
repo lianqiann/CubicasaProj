@@ -1,9 +1,7 @@
-import os
 import numpy as np
 import torch
 from PIL import Image
 import cv2
-
 from floortrans.loaders.house import House
 import copy
 import torchvision
@@ -13,20 +11,14 @@ import model_utils.transforms as T
 from model_utils.engine import train_one_epoch, evaluate
 import model_utils.utils as utils
 import matplotlib.pyplot as plt
-import argparse
 from floortrans.loaders import FloorplanSVG, DictToTensor, Compose, RotateNTurns
-from tqdm import tqdm 
 from floortrans.metrics import get_evaluation_tensors, runningScore
+from collections import defaultdict
 
-
-import warnings
-
-
-
-room_classes = ["Background", "Outdoor", "Wall", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
-rooms = ["Outdoor", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
-room_ids = [1,3,4,5,6,7,8,9,10,11]
-room_labels = {rooms[i]:i+1 for i in range(len(rooms))}
+ROOM_CLASSES = ["Background", "Outdoor", "Wall", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
+ROOMS = ["Outdoor", "Kitchen", "Living Room" ,"Bed Room", "Bath", "Entry", "Railing", "Storage", "Garage", "Undefined"]
+ROOM_IDS = [1,3,4,5,6,7,8,9,10,11]
+ROOM_LABELS = {ROOMS[i]:i+1 for i in range(len(ROOMS))}
 
 
 class CubicasaDataset(object):
@@ -70,7 +62,7 @@ class CubicasaDataset(object):
 
         limit_list = []
 
-        for r in room_ids:
+        for r in ROOM_IDS:
             x = copy.copy(masks)
             x[masks != r] = 0 
             x = x.astype(np.uint8)
@@ -78,8 +70,6 @@ class CubicasaDataset(object):
             limit_list +=[(r, cot) for cot in contours]
             num_obj+=len(contours)
         
-#         if num_obj >20:
-#             rand_inds = np.random.choice(np.arange(num_obj), 20, replace  = False)
         if num_obj ==0:
             rand_inds = []
             print('No objects in this image, folder:', self.imgs[idx])
@@ -94,7 +84,7 @@ class CubicasaDataset(object):
             areas.append(cv2.contourArea(tcnt,False))
             x,y,w,h = cv2.boundingRect(tcnt)
             boxes.append([x,y,x+w,y+h])
-            labels.append(room_labels[room_classes[r]])
+            labels.append(ROOM_LABELS[ROOM_CLASSES[r]])
         
         boxes = torch.FloatTensor(boxes)
         labels = torch.as_tensor(labels, dtype = torch.long)
@@ -127,6 +117,7 @@ class CubicasaDataset(object):
         return len(self.imgs)
 
 
+
 class Decode_Maskrcnn(object):
     
     def __init__(self, dataset, idx, model = None, prediction = None, nms = 0.9):
@@ -146,9 +137,7 @@ class Decode_Maskrcnn(object):
         self.height_org, self.width_org, _ = cv2.imread(self.org_img_path).shape
         
         self.inds = torchvision.ops.nms(self.pred['boxes'], self.pred['scores'],nms)
-        
-        
-    
+
     
     ##################GROUND TRUTH####################
     
@@ -179,18 +168,14 @@ class Decode_Maskrcnn(object):
             n_rooms = 12
             rseg = ax.imshow(gt, cmap='rooms', vmin=0, vmax=n_rooms-0.1)
             cbar = plt.colorbar(rseg, ticks=np.arange(n_rooms) + 0.5, fraction=0.046, pad=0.01)
-            cbar.ax.set_yticklabels(room_classes, fontsize=20)
+            cbar.ax.set_yticklabels(ROOM_CLASSES, fontsize=20)
             plt.show()
-        
-        
-            
         
         return gt
     
     
     ##################PREDICTION#######################
-    
-    
+
     #segmentation map
     def get_segmap(self, thres = 0.1, img_show = True, resize= False):
         
@@ -205,14 +190,11 @@ class Decode_Maskrcnn(object):
             if label in labels:
                 continue
             mask = self.pred['masks'][i,0,:,:]
+            #edges = torch.zeros(mask.shape)
+            #edges[mask>thres] = 1
+            #walls = torch.as_tensor(getBordered(edges.data.numpy(), 4))
+            #seg_map[walls==1] = 2
             seg_map[mask>thres] = label
-
-            # edges = torch.zeros(mask.shape)
-            # edges[mask>thres] = 1
-            # walls = torch.as_tensor(self.getBordered(edges.data.numpy(), 4))
-            # seg_map[walls==1] = 2
-            
-
             labels.add(label)
             
         edges = torch.as_tensor(self.getBordered(seg_map.data.numpy(), 4))
@@ -231,7 +213,7 @@ class Decode_Maskrcnn(object):
             n_rooms = 12
             rseg = ax.imshow(seg_map, cmap = 'rooms', vmin=0, vmax=n_rooms-0.1)
             cbar = plt.colorbar(rseg, ticks=np.arange(n_rooms)+0.3, fraction=0.046, pad=0.01)
-            cbar.ax.set_yticklabels(room_classes, fontsize=20)
+            cbar.ax.set_yticklabels(ROOM_CLASSES, fontsize=20)
             plt.show()
             
         
@@ -251,25 +233,29 @@ class Decode_Maskrcnn(object):
         for i,lab in enumerate(self.pred['labels'][self.inds]):
             lab = int(lab.data.numpy())
             self.results[lab]['boxes'].append(self.pred['boxes'][i])
-        
-        im = self.img.data.numpy().copy()
-        im = np.moveaxis(im, 0,-1)
-        image = im
+
+        image = cv2.imread(self.org_img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
         
         if len(self.results[class_id]['boxes'])!= 0:
         
             for (x,y,z,w) in self.results[class_id]['boxes']:
+                
+                scale_x, scale_y = self.width_org/256, self.height_org/256
+                new_x, new_z = x*scale_x, z*scale_x
+                new_y, new_w = y*scale_y, w*scale_y
 
-                image = cv2.rectangle(image, (x,y), (z,w), (0,252,0), 1) 
-                #image = cv2.putText(image, rooms[class_id-1], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,0,0), 2)
 
-            result = cv2.UMat.get(image)
+                image = cv2.rectangle(image, (new_x,new_y), (new_z,new_w), (0,252,0), 3) 
+
+            result = image
             result = cv2.resize(result, (self.width_org, self.height_org))
 
             if img_show:
                 plt.figure(figsize = (20,12))
                 plt.imshow(result)
-                plt.title(rooms[class_id-1])
+                plt.title(ROOMS[class_id-1], fontsize = 20)
         
         else:
             print('No such object')
@@ -298,7 +284,7 @@ class Decode_Maskrcnn(object):
 
                 x,y,w,h = cv2.boundingRect(tcnt)
                 result = cv2.rectangle(result, (x,y), (x+w,y+h), (0,252,0), 3) 
-            result = cv2.putText(result, rooms[i-1], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (252,0,0), 2)
+            result = cv2.putText(result, ROOMS[i-1], (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (252,0,0), 2)
 
         
         #result = cv2.UMat.get(result)
@@ -306,7 +292,7 @@ class Decode_Maskrcnn(object):
         if img_show:
             plt.figure(figsize = (20,12))
             plt.imshow(result)
-            plt.title('Predict Result collection')
+            plt.title('Predict Result collection', fontsize = 20)
 
         return result
     
@@ -325,8 +311,6 @@ class Decode_Maskrcnn(object):
         return cv2.drawContours(bg, [bigcontour], 0, (255, 255, 255), width).astype(bool)
 
     
-
-
 
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
@@ -357,7 +341,7 @@ def get_transform(train):
 
 
 
-def prepare_model(dataset_name, device):
+def prepare_model(dataset_name):
 
 
     # our dataset has two classes only - background and person
@@ -377,92 +361,8 @@ def prepare_model(dataset_name, device):
     model = get_model_instance_segmentation(num_classes)
 
     # move model to the right device
-    model.to(device)
+    
 
     
 
     return model, dataset, data_loader
-
-
-def main():
-
-    #supress warning
-    warnings.filterwarnings("ignore")
-
-    parser = argparse.ArgumentParser(
-        description='MaskRCNN for Cubicasa Dataset')
-    
-
-    parser.add_argument('--epoch', type=str, default=None,
-                        help="which epoch result model to run, default: None")
-    parser.add_argument('--data_name', type=str, default='val',
-                        help="which dataset to test, default: val")
-    parser.add_argument('--run_all', type=bool, default=False,
-                        help="whether to run all models, default: None")
-    parser.add_argument('--data_name2', type=str, default=None,
-                        help="the name of second dataset, default: None")
-    args = parser.parse_args()
-
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model, dataset, data_loader = prepare_model(args.data_name, device)
-
-    if args.data_name2:
-        model, dataset_test, data_loader_test = prepare_model(args.data_name2, device)
-
-    evaluator = runningScore(12)
-
-    if args.epoch:
-        model.load_state_dict(torch.load(f'models/maskrcnn_{args.epoch}.pt',map_location='cpu'))
-        evaluate(model, data_loader, device=device)
-
-        for idx in tqdm(range(len(dataset))):
-            
-            dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
-    
-            seg_gt = torch.as_tensor(dm.get_groundtruth(resize = True, img_show = False))
-            seg_pred = torch.as_tensor(dm.get_segmap(0.1, resize = True, img_show = False))
-            evaluator.update(seg_gt,seg_pred)
-        evaluator.get_scores()
-    
-    if args.run_all:
-        for epoch in range(5):
-            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cpu'))
-            
-            for idx in range(len(dataset)):
-                dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
-                seg_gt = torch.as_tensor(dm.get_groundtruth(resize = True, img_show = False))
-                seg_pred = torch.as_tensor(dm.get_segmap(0.1, resize = True, img_show = False))
-                evaluator.update(seg_gt,seg_pred)
-            print('*'*25+f'validation result of epoch {epoch}'+'*'*25)
-            print(evaluator.get_scores())
-
-
-            if args.data_name2:
-
-                for idx in range(len(dataset_test)):
-                    dm = Decode_Maskrcnn(dataset_test, idx, model, nms = 1)
-                    seg_gt = torch.as_tensor(dm.get_groundtruth(resize = True, img_show = False))
-                    seg_pred = torch.as_tensor(dm.get_segmap(0.1, resize = True, img_show = False))
-                    evaluator.update(seg_gt,seg_pred)
-                print('*'*25+f'test result of epoch {epoch}'+'*'*25)
-                print(evaluator.get_scores())
-        
-        for epoch in range(1,5):
-            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cpu'))
-            evaluate(model, data_loader, device=device)
-            print('*'*25+f'validation result of epoch {epoch}'+'*'*25+'finished')
-
-
-            if args.data_name2:
-                evaluate(model, data_loader_test, device=device)
-                print('*'*25+f'test result of epoch {epoch}'+'*'*25+'finished')
-
-
-
-
-
-main()
-
-
-    
-
