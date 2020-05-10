@@ -427,7 +427,7 @@ def main():
     
     if args.run_all:
         for epoch in range(5):
-            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cpu'))
+            model.load_state_dict(torch.load(f'checkpoints/maskrcnn_{epoch}_resized.pt',map_location='cuda' if torch.cuda.is_available() else 'cpu'))
             
             for idx in range(len(dataset)):
                 dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
