@@ -206,17 +206,18 @@ class Decode_Maskrcnn(object):
                 continue
             mask = self.pred['masks'][i,0,:,:]
             seg_map[mask>thres] = label
-
-            # edges = torch.zeros(mask.shape)
-            # edges[mask>thres] = 1
-            # walls = torch.as_tensor(self.getBordered(edges.data.numpy(), 4))
-            # seg_map[walls==1] = 2
             
 
             labels.add(label)
             
-        edges = torch.as_tensor(self.getBordered(seg_map.data.numpy(), 4))
-        seg_map[edges == 1] = 2
+        # edges = torch.as_tensor(self.getBordered(seg_map.data.numpy(), 4))
+        # seg_map[edges == 1] = 2
+        seg_map = seg_map.data.numpy()
+        edges = cv2.Canny(seg_map.astype(np.uint8), 0.1,0.2)
+        kernel = np.ones((5,5), dtype = np.uint8)
+        erosion = cv2.erode(edges,kernel,iterations = 1)
+        dilation = cv2.dilate(edges,kernel,iterations = 1)
+        seg_map[dilation != 0] = 2
         
         #resize
         if not resize:
@@ -447,15 +448,15 @@ def main():
                 print('*'*25+f'test result of epoch {epoch}'+'*'*25)
                 print(evaluator.get_scores())
         
-        for epoch in range(1,5):
-            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cpu'))
-            evaluate(model, data_loader, device=device)
-            print('*'*25+f'validation result of epoch {epoch}'+'*'*25+'finished')
+        # for epoch in range(1,5):
+        #     model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cpu'))
+        #     evaluate(model, data_loader, device=device)
+        #     print('*'*25+f'validation result of epoch {epoch}'+'*'*25+'finished')
 
 
-            if args.data_name2:
-                evaluate(model, data_loader_test, device=device)
-                print('*'*25+f'test result of epoch {epoch}'+'*'*25+'finished')
+        #     if args.data_name2:
+        #         evaluate(model, data_loader_test, device=device)
+        #         print('*'*25+f'test result of epoch {epoch}'+'*'*25+'finished')
 
 
 

@@ -190,20 +190,21 @@ class Decode_Maskrcnn(object):
             if label in labels:
                 continue
             mask = self.pred['masks'][i,0,:,:]
-            #edges = torch.zeros(mask.shape)
-            #edges[mask>thres] = 1
-            #walls = torch.as_tensor(getBordered(edges.data.numpy(), 4))
-            #seg_map[walls==1] = 2
+          
             seg_map[mask>thres] = label
             labels.add(label)
-            
-        edges = torch.as_tensor(self.getBordered(seg_map.data.numpy(), 4))
-        seg_map[edges == 1] = 2
+
+        seg_map = seg_map.data.numpy()
+        edges = cv2.Canny(seg_map.astype(np.uint8), 0.1,0.2)
+        kernel = np.ones((5,5), dtype = np.uint8)
+        erosion = cv2.erode(edges,kernel,iterations = 1)
+        dilation = cv2.dilate(edges,kernel,iterations = 1)
+        seg_map[dilation != 0] = 2
         
         #resize
         if not resize:
             #return numpy array
-            seg_map = cv2.resize(seg_map.data.numpy(),(self.width_org, self.height_org) )
+            seg_map = cv2.resize(seg_map,(self.width_org, self.height_org) )
         
         if img_show:
             plt.figure(figsize=(10,10))
