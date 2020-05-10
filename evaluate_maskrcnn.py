@@ -226,7 +226,7 @@ class Decode_Maskrcnn(object):
         #resize
         if not resize:
             #return numpy array
-            seg_map = cv2.resize(seg_map,(self.width_org, self.height_org) )
+            seg_map = cv2.resize(seg_map.data.numpy(),(self.width_org, self.height_org) )
         
         if img_show:
             plt.figure(figsize=(10,10))
@@ -414,12 +414,12 @@ def main():
     if args.data_name2:
         model, dataset_test, data_loader_test = prepare_model(args.data_name2, device)
 
-    
+    evaluator = runningScore(12)
 
     if args.epoch:
         model.load_state_dict(torch.load(f'models/maskrcnn_{args.epoch}.pt',map_location='cpu'))
         evaluate(model, data_loader, device=device)
-        evaluator = runningScore(12)
+
         for idx in tqdm(range(len(dataset))):
             
             dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
@@ -432,7 +432,7 @@ def main():
     if args.run_all:
         for epoch in range(5):
             model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cuda' if torch.cuda.is_available() else 'cpu'))
-            evaluator = runningScore(12)
+            
             for idx in range(len(dataset)):
                 dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
                 seg_gt = torch.as_tensor(dm.get_groundtruth(resize = True, img_show = False))
