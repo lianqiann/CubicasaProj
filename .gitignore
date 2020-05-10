@@ -127,6 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+<<<<<<< HEAD
 
 
 # external source
@@ -139,3 +140,5 @@ models/
 
 
 
+=======
+>>>>>>> parent of ee6f46f... first commit
