@@ -133,15 +133,17 @@ class Decode_Maskrcnn(object):
 
         device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         
-        self.folder = dataset.imgs[idx].to(device)
-        self.img = dataset[idx][0]
+        self.folder = dataset.imgs[idx]
+        self.img = dataset[idx][0].to(device)
         
         if not prediction:
             model.eval()
             with torch.no_grad():
-                self.pred = model([self.img])[0].cpu()
+                self.pred = model([self.img])[0]
         else:
-            self.pred = prediction[0].cpu()
+            self.pred = prediction[0]
+        
+        self.pred = {k: v.to('cpu') for k, v in self.pred.items()} 
         
         
         self.org_img_path ='./data/cubicasa5k'+self.folder+'F1_original.png'
@@ -429,7 +431,7 @@ def main():
     
     if args.run_all:
         for epoch in range(5):
-            model.load_state_dict(torch.load(f'checkpoints/maskrcnn_{epoch}_resized.pt',map_location='cuda' if torch.cuda.is_available() else 'cpu'))
+            model.load_state_dict(torch.load(f'models/maskrcnn_{epoch}_resized.pt',map_location='cuda' if torch.cuda.is_available() else 'cpu'))
             
             for idx in range(len(dataset)):
                 dm = Decode_Maskrcnn(dataset, idx, model, nms = 1)
