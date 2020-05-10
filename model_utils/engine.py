@@ -34,7 +34,6 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         try:
             loss_dict = model(images, targets)
             
-            
         except:
             wrong_counts +=1
             print('Training encounters problems!')
