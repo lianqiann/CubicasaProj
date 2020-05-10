@@ -130,16 +130,18 @@ class CubicasaDataset(object):
 class Decode_Maskrcnn(object):
     
     def __init__(self, dataset, idx, model = None, prediction = None, nms = 0.9):
+
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         
-        self.folder = dataset.imgs[idx]
+        self.folder = dataset.imgs[idx].to(device)
         self.img = dataset[idx][0]
         
         if not prediction:
             model.eval()
             with torch.no_grad():
-                self.pred = model([self.img])[0]
+                self.pred = model([self.img])[0].cpu()
         else:
-            self.pred = prediction[0]
+            self.pred = prediction[0].cpu()
         
         
         self.org_img_path ='./data/cubicasa5k'+self.folder+'F1_original.png'
@@ -441,6 +443,7 @@ def main():
             if args.data_name2:
 
                 for idx in range(len(dataset_test)):
+        
                     dm = Decode_Maskrcnn(dataset_test, idx, model, nms = 1)
                     seg_gt = torch.as_tensor(dm.get_groundtruth(resize = True, img_show = False))
                     seg_pred = torch.as_tensor(dm.get_segmap(0.1, resize = True, img_show = False))
